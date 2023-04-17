@@ -1,4 +1,4 @@
-use std::vec;
+use std::{thread::panicking, vec};
 
 use crate::lexer::{Token, TokenType};
 
@@ -26,6 +26,9 @@ impl Node {
     pub fn print(&self, depth: usize) {
         let indent = " ".repeat(depth * 4);
         println!("{}{:?}", indent, self.node_type);
+        for child in &self.children {
+            child.print(depth + 1);
+        }
     }
 }
 
@@ -112,7 +115,10 @@ impl Parser {
 
     fn parse_body(&mut self) -> Node {
         while self.cursor < self.tokens.len() && !self.expect(TokenType::NewLine) {
-            if self.expect(TokenType::SetOpen) {
+            if self.expect(TokenType::Union) {
+                let union = self.parse_union();
+                self.stack.push(union);
+            } else if self.expect(TokenType::SetOpen) {
                 let set = self.parse_set();
                 self.stack.push(set);
             } else if self.expect(TokenType::SetDifference) {
@@ -121,10 +127,8 @@ impl Parser {
             } else if self.expect(TokenType::DataPoint) {
                 let data_point = self.parse_data_point();
                 self.stack.push(data_point);
-            } else if self.expect(TokenType::Comma) {
-                self.cursor += 1;
-            } else if self.expect(TokenType::SetClose) {
-                break;
+            } else {
+                panic!("Unexpected token: {:?}", self.tokens[self.cursor]);
             }
         }
 
@@ -199,6 +203,25 @@ impl Parser {
         let node = Node {
             node_type: NodeType::SetDifference,
             children: vec![lhs, set],
+            token: None,
+        };
+        node
+    }
+
+    fn parse_union(&mut self) -> Node {
+        assert!(self.expect(TokenType::Union));
+        assert!(
+            self.expect_stack_top(NodeType::Set)
+                || self.expect_stack_top(NodeType::DataPoint)
+                || self.expect_stack_top(NodeType::Union)
+                || self.expect_stack_top(NodeType::SetDifference)
+        );
+        self.cursor += 1; // \
+        let lhs = self.stack.pop().unwrap();
+        let rhs = self.parse_body();
+        let node = Node {
+            node_type: NodeType::Union,
+            children: vec![lhs, rhs],
             token: None,
         };
         node
@@ -295,5 +318,18 @@ mod tests {
         let set_d = &root.children[0];
         assert_eq!(set_d.node_type, NodeType::SetDifference);
         assert_eq!(set_d.children.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_union() {
+        let text = "L1 U {d1} U L3".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_body();
+        let set_d = &root.children[0];
+        assert_eq!(set_d.node_type, NodeType::Union);
+        assert_eq!(set_d.children.len(), 2);
+        root.print(0);
     }
 }
