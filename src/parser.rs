@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_parse_set_difference() {
-        let text = "L1 \\ {d1, d2, d3}".to_string();
+        let text = "L1 / {d1, d2, d3}".to_string();
         let mut lexer = Lexer::new(text);
         let tokens = lexer.lex_all();
         let mut parser = Parser::new(tokens);
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_parse_set_difference_2() {
-        let text = "{d2, d3} \\ {d1, d2, d3}".to_string();
+        let text = "{d2, d3} / {d1, d2, d3}".to_string();
         let mut lexer = Lexer::new(text);
         let tokens = lexer.lex_all();
         let mut parser = Parser::new(tokens);
@@ -334,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_parse_data_flow_equation() {
-        let text = "L1 = L2 \\ {d1, d2, d3} U L3".to_string();
+        let text = "L1 = L2 / {d1, d2, d3} U L3".to_string();
         let mut lexer = Lexer::new(text);
         let tokens = lexer.lex_all();
         let mut parser = Parser::new(tokens);
