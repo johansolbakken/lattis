@@ -1,6 +1,6 @@
 use crate::lexer::{Token, TokenType};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum NodeType {
     Set,
     DataPoint,
@@ -147,5 +147,21 @@ impl Parser {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::Lexer;
+
+    #[test]
+    fn test_parse_data_point() {
+        let text = "L1".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_data_point();
+        assert_eq!(root.node_type, NodeType::DataPoint);
     }
 }
