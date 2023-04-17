@@ -1,8 +1,8 @@
-use std::vec;
+use std::{vec, ops::{Deref, DerefMut}};
 
 use crate::lexer::{Token, TokenType};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NodeType {
     Set,
     DataPoint,
@@ -15,11 +15,11 @@ pub enum NodeType {
     Root,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
-    node_type: NodeType,
-    children: Vec<Node>,
-    token: Option<Token>,
+    pub node_type: NodeType,
+    pub children: Vec<Node>,
+    pub token: Option<Token>,
 }
 
 impl Node {
@@ -41,6 +41,20 @@ impl Node {
         }
 
         return s;
+    }
+}
+
+impl Deref for Node {
+    type Target = Vec<Node>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.children
+    }
+}
+
+impl DerefMut for Node {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.children
     }
 }
 

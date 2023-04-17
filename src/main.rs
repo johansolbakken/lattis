@@ -2,6 +2,7 @@ use lexer::Lexer;
 use parser::Parser;
 
 mod lexer;
+mod node;
 mod parser;
 
 fn main() {
@@ -9,7 +10,8 @@ fn main() {
     let mut lexer = Lexer::new(text);
     let tokens = lexer.lex_all();
     let mut parser = Parser::new(tokens);
-    let root = parser.parse();
-    let s = root.to_string(0);
+    let mut root = parser.parse();
+    let root2 = node::simplify(&mut root);
+    let s = root2.to_string(0);
     println!("{}", s);
 }
