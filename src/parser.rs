@@ -164,4 +164,15 @@ mod tests {
         let root = parser.parse_data_point();
         assert_eq!(root.node_type, NodeType::DataPoint);
     }
+
+    #[test]
+    fn test_empty_set() {
+        let text = "{}".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_set();
+        assert_eq!(root.node_type, NodeType::Set);
+        assert_eq!(root.children.len(), 0);
+    }
 }
