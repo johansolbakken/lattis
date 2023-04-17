@@ -43,6 +43,14 @@ impl Lexer {
 
     fn lex(&mut self) -> Token {
         // remove spaces from left
+        if self.text[self.cursor] == b';' {
+            self.cursor += 1;
+            return Token {
+                token_type: TokenType::NewLine,
+                lexeme: "\n".to_string(),
+            };
+        }
+
         self.skip_whitespace();
 
         if self.cursor >= self.text.len() {
@@ -113,14 +121,6 @@ impl Lexer {
             return Token {
                 token_type: TokenType::Comma,
                 lexeme: ",".to_string(),
-            };
-        }
-
-        if self.text[self.cursor] == b'\n' {
-            self.cursor += 1;
-            return Token {
-                token_type: TokenType::NewLine,
-                lexeme: "\n".to_string(),
             };
         }
 

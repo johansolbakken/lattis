@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::vec;
 
 use crate::lexer::{Token, TokenType};
@@ -67,38 +66,33 @@ impl Parser {
         self.tokens[self.cursor].token_type == token_type
     }
 
-    fn peek_type(&self) -> TokenType {
-        self.tokens[self.cursor].token_type.clone()
-    }
-
     fn expect_stack_top(&self, node_type: NodeType) -> bool {
         self.stack[self.stack.len() - 1].node_type == node_type
     }
 
     pub fn parse(&mut self) -> Node {
-        let mut root = Node {
+        let root = Node {
             node_type: NodeType::Root,
-            children: Vec::new(),
+            children: vec![self.parse_data_flow_equation_list()],
             token: None,
         };
-        while self.cursor < self.tokens.len() {
-            let node = self.parse_data_flow_equation_list();
-            root.children.push(node);
-        }
         root
     }
 
     fn parse_data_flow_equation_list(&mut self) -> Node {
-        let dataflow_equation = self.parse_data_flow_equation();
-        if self.cursor < self.tokens.len() {
-            return dataflow_equation;
-        }
-        let sub_list = self.parse_data_flow_equation_list();
-        let node = Node {
+        let mut node = Node {
             node_type: NodeType::DataFlowEquationList,
-            children: vec![dataflow_equation, sub_list],
+            children: Vec::new(),
             token: None,
         };
+        while self.cursor < self.tokens.len() {
+            let eq = self.parse_data_flow_equation();
+            node.children.push(eq);
+
+            if self.expect(TokenType::NewLine) {
+                self.cursor += 1;
+            }
+        }
         node
     }
 
@@ -117,7 +111,7 @@ impl Parser {
 
     fn parse_data_point(&mut self) -> Node {
         assert!(self.expect(TokenType::DataPoint));
-        let mut node = Node {
+        let node = Node {
             node_type: NodeType::DataPoint,
             children: Vec::new(),
             token: Some(self.tokens[self.cursor].clone()),
@@ -145,23 +139,12 @@ impl Parser {
             }
         }
 
-        if self.expect(TokenType::NewLine) {
-            self.cursor += 1;
-        }
-
         let node = Node {
             node_type: NodeType::Body,
             children: vec![self.stack.pop().unwrap()],
             token: None,
         };
         node
-    }
-
-    fn stack_expect(&self, node_type: NodeType) -> bool {
-        if self.stack.len() == 0 {
-            return false;
-        }
-        self.stack[self.stack.len() - 1].node_type == node_type
     }
 
     fn parse_set(&mut self) -> Node {
@@ -244,6 +227,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use std::fs::File;
+    use std::io::Write;
 
     use super::*;
     use crate::lexer::Lexer;
@@ -365,13 +349,34 @@ mod tests {
 
     #[test]
     fn test_parse_data_flow_equation_list() {
-        let text = r"L1 = {}\nL2 = L1 U {d1}\nL3 = L2 U L28".to_string();
+        let text = r"L1 = {};L2 = L1 U {d1};L3 = L2 U L28".to_string();
         let mut lexer = Lexer::new(text);
         let tokens = lexer.lex_all();
-        let mut parser = Parser::new(tokens);
-        let root = parser.parse_data_flow_equation_list();
+        let mut file = File::create("test_parse_data_flow_equation_list.tokens.test.txt").unwrap();
+        let s = format!("{:#?}", tokens);
+        file.write_all(s.as_bytes()).unwrap();
+        let mut parser = Parser::new(tokens.clone());
+        let root = parser.parse();
 
         let mut file = File::create("test_parse_data_flow_equation_list.test.txt").unwrap();
+        let s = root.to_string(0);
+        file.write_all(s.as_bytes()).unwrap();
+    }
+
+    #[test]
+    fn test_parse_data_flow_equation_2() {
+        let text = r"L1 = L2 U L3".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut file = File::create("test_parse_data_flow_equation_2.tokens.test.txt").unwrap();
+        let s = format!("{:#?}", tokens);
+        file.write_all(s.as_bytes()).unwrap();
+        let mut parser = Parser::new(tokens.clone());
+        let root = parser.parse_data_flow_equation();
+        assert_eq!(root.node_type, NodeType::DataflowEquation);
+        assert_eq!(root.children.len(), 2);
+        // write to file
+        let mut file = File::create("test_parse_data_flow_equation_2.test.txt").unwrap();
         let s = root.to_string(0);
         file.write_all(s.as_bytes()).unwrap();
     }
