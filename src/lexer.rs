@@ -20,16 +20,22 @@ pub struct Token {
 }
 
 pub struct Lexer {
-    text: Vec<u8>,
+    text: String,
     cursor: usize,
 }
 
 impl Lexer {
     pub fn new(text: String) -> Lexer {
-        Lexer {
-            text: text.into_bytes(),
-            cursor: 0,
-        }
+        Lexer { text, cursor: 0 }
+    }
+
+    fn current(&self) -> char {
+        self.text
+            .get(self.cursor..self.cursor + 1)
+            .unwrap()
+            .chars()
+            .next()
+            .unwrap()
     }
 
     pub fn lex_all(&mut self) -> Vec<Token> {
@@ -42,12 +48,18 @@ impl Lexer {
     }
 
     fn lex(&mut self) -> Token {
-        // remove spaces from left
-        if self.text[self.cursor] == b';' {
+        if self.cursor >= self.text.len() {
+            return Token {
+                token_type: TokenType::Eof,
+                lexeme: "EOF".to_string(),
+            };
+        }
+
+        if self.current() == ';' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::NewLine,
-                lexeme: "\n".to_string(),
+                lexeme: ";".to_string(),
             };
         }
 
@@ -60,7 +72,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'{' {
+        if self.current() == '{' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::SetOpen,
@@ -68,7 +80,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'}' {
+        if self.current() == '}' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::SetClose,
@@ -76,7 +88,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'L' {
+        if self.current() == 'L' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::DataPoint,
@@ -84,7 +96,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'd' {
+        if self.current() == 'd' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::Definition,
@@ -92,7 +104,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'=' {
+        if self.current() == '=' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::Equals,
@@ -100,7 +112,7 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'U' {
+        if self.current() == 'U' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::Union,
@@ -108,15 +120,15 @@ impl Lexer {
             };
         }
 
-        if self.text[self.cursor] == b'\\' {
+        if self.current() == '/' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::SetDifference,
-                lexeme: "\\".to_string(),
+                lexeme: "/".to_string(),
             };
         }
 
-        if self.text[self.cursor] == b',' {
+        if self.current() == ',' {
             self.cursor += 1;
             return Token {
                 token_type: TokenType::Comma,
@@ -126,7 +138,7 @@ impl Lexer {
 
         let token = Token {
             token_type: TokenType::Unkown,
-            lexeme: self.text[self.cursor].to_string(),
+            lexeme: self.current().to_string(),
         };
         self.cursor += 1;
         return token;
@@ -134,18 +146,15 @@ impl Lexer {
 
     fn lex_number(&mut self) -> String {
         let mut number = String::new();
-        while self.cursor < self.text.len() && self.text[self.cursor].is_ascii_digit() {
-            number.push(self.text[self.cursor] as char);
+        while self.cursor < self.text.len() && self.current().is_ascii_digit() {
+            number.push(self.current() as char);
             self.cursor += 1;
         }
         number
     }
 
     fn skip_whitespace(&mut self) {
-        while self.cursor < self.text.len()
-            && self.text[self.cursor].is_ascii_whitespace()
-            && self.text[self.cursor] != b'\n'
-        {
+        while self.cursor < self.text.len() && self.current().is_ascii_whitespace() {
             self.cursor += 1;
         }
     }

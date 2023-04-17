@@ -10,5 +10,6 @@ fn main() {
     let tokens = lexer.lex_all();
     let mut parser = Parser::new(tokens);
     let root = parser.parse();
-    root.print(0);
+    let s = root.to_string(0);
+    println!("{}", s);
 }
