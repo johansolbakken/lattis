@@ -14,19 +14,17 @@ pub enum NodeType {
     Root,
 }
 
+#[derive(Debug)]
 pub struct Node {
     node_type: NodeType,
     children: Vec<Node>,
-    data: String,
+    token: Option<Token>,
 }
 
 impl Node {
     pub fn print(&self, depth: usize) {
         let indent = " ".repeat(depth * 4);
-        println!("{}{:?} {}", indent, self.node_type, self.data);
-        for child in &self.children {
-            child.print(depth + 1);
-        }
+        println!("{}{:?}", indent, self.node_type);
     }
 }
 
@@ -52,7 +50,7 @@ impl Parser {
         let mut root = Node {
             node_type: NodeType::Root,
             children: Vec::new(),
-            data: String::new(),
+            token: None,
         };
         while self.cursor < self.tokens.len() {
             let node = self.parse_data_flow_equation_list();
@@ -70,7 +68,7 @@ impl Parser {
         let node = Node {
             node_type: NodeType::DataFlowEquationList,
             children: vec![dataflow_equation, sub_list],
-            data: String::new(),
+            token: None,
         };
         node
     }
@@ -83,7 +81,7 @@ impl Parser {
         let node = Node {
             node_type: NodeType::DataflowEquation,
             children: vec![L, body],
-            data: String::new(),
+            token: None,
         };
         node
     }
@@ -93,9 +91,8 @@ impl Parser {
         let mut node = Node {
             node_type: NodeType::DataPoint,
             children: Vec::new(),
-            data: String::new(),
+            token: Some(self.tokens[self.cursor].clone()),
         };
-        node.data = self.tokens[self.cursor].lexeme.clone();
         self.cursor += 1;
         node
     }
@@ -113,7 +110,7 @@ impl Parser {
         let node = Node {
             node_type: NodeType::Set,
             children: definition_list,
-            data: String::new(),
+            token: None,
         };
         node
     }
@@ -135,13 +132,11 @@ impl Parser {
 
     fn parse_definition(&mut self) -> Option<Node> {
         if self.expect(TokenType::Definition) {
-            self.cursor += 1;
             let mut node = Node {
                 node_type: NodeType::Definition,
                 children: Vec::new(),
-                data: String::new(),
+                token: Some(self.tokens[self.cursor].clone()),
             };
-            node.data = self.tokens[self.cursor].lexeme.clone();
             self.cursor += 1;
             Some(node)
         } else {
@@ -166,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_set() {
+    fn test_parse_empty_set() {
         let text = "{}".to_string();
         let mut lexer = Lexer::new(text);
         let tokens = lexer.lex_all();
@@ -174,5 +169,15 @@ mod tests {
         let root = parser.parse_set();
         assert_eq!(root.node_type, NodeType::Set);
         assert_eq!(root.children.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_definition() {
+        let text = "d1".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_definition().unwrap();
+        assert_eq!(root.node_type, NodeType::Definition);
     }
 }
