@@ -1,4 +1,7 @@
-use std::{vec, ops::{Deref, DerefMut}};
+use std::{
+    ops::{Deref, DerefMut},
+    vec,
+};
 
 use crate::lexer::{Token, TokenType};
 
@@ -24,11 +27,7 @@ pub struct Node {
 
 impl Node {
     pub fn print(&self, depth: usize) {
-        let indent = " ".repeat(depth * 4);
-        println!("{}{:?}", indent, self.node_type);
-        for child in &self.children {
-            child.print(depth + 1);
-        }
+        println!("{}", self.to_string(depth));
     }
 
     pub fn to_string(&self, depth: usize) -> String {
