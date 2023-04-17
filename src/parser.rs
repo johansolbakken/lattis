@@ -1,4 +1,6 @@
-use std::{thread::panicking, vec};
+use std::fs::File;
+use std::io::Write;
+use std::vec;
 
 use crate::lexer::{Token, TokenType};
 
@@ -29,6 +31,18 @@ impl Node {
         for child in &self.children {
             child.print(depth + 1);
         }
+    }
+
+    pub fn to_string(&self, depth: usize) -> String {
+        let indent = " ".repeat(depth * 4);
+        let mut s = format!("{}{:?} {:?}", indent, self.node_type, self.token);
+
+        for child in &self.children {
+            let c = child.to_string(depth + 1);
+            s = format!("{}\n{}", s, c);
+        }
+
+        return s;
     }
 }
 
@@ -230,6 +244,8 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+
     use super::*;
     use crate::lexer::Lexer;
 
@@ -331,5 +347,20 @@ mod tests {
         assert_eq!(set_d.node_type, NodeType::Union);
         assert_eq!(set_d.children.len(), 2);
         root.print(0);
+    }
+
+    #[test]
+    fn test_parse_data_flow_equation() {
+        let text = "L1 = L2 \\ {d1, d2, d3} U L3".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_data_flow_equation();
+        assert_eq!(root.node_type, NodeType::DataflowEquation);
+        assert_eq!(root.children.len(), 2);
+        // write to file
+        let mut file = File::create("log/test_parse_data_flow_equation.txt").unwrap();
+        let s = root.to_string(0);
+        file.write_all(s.as_bytes()).unwrap();
     }
 }
