@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::lexer::{Token, TokenType};
 
 #[derive(Debug, PartialEq)]
@@ -31,11 +33,16 @@ impl Node {
 pub struct Parser {
     tokens: Vec<Token>,
     cursor: usize,
+    stack: Vec<Node>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        Parser { tokens, cursor: 0 }
+        Parser {
+            tokens,
+            cursor: 0,
+            stack: Vec::new(),
+        }
     }
 
     fn expect(&self, token_type: TokenType) -> bool {
@@ -44,6 +51,10 @@ impl Parser {
 
     fn peek_type(&self) -> TokenType {
         self.tokens[self.cursor].token_type.clone()
+    }
+
+    fn expect_stack_top(&self, node_type: NodeType) -> bool {
+        self.stack[self.stack.len() - 1].node_type == node_type
     }
 
     pub fn parse(&mut self) -> Node {
@@ -74,13 +85,13 @@ impl Parser {
     }
 
     fn parse_data_flow_equation(&mut self) -> Node {
-        let L = self.parse_data_point();
+        let l = self.parse_data_point();
         assert!(self.expect(TokenType::Equals));
         self.cursor += 1;
         let body = self.parse_body();
         let node = Node {
             node_type: NodeType::DataflowEquation,
-            children: vec![L, body],
+            children: vec![l, body],
             token: None,
         };
         node
@@ -98,7 +109,47 @@ impl Parser {
     }
 
     fn parse_body(&mut self) -> Node {
-        todo!()
+        while self.cursor < self.tokens.len() {
+            if self.expect(TokenType::SetOpen) {
+                let set = self.parse_set();
+                self.stack.push(set);
+            } else if self.expect(TokenType::SetDifference) {
+                let set_difference = self.parse_set_difference();
+                self.stack.push(set_difference);
+            } else if self.expect(TokenType::DataPoint) {
+                let data_point = self.parse_data_point();
+                self.stack.push(data_point);
+            } else if self.expect(TokenType::Comma) {
+                self.cursor += 1;
+            } else if self.expect(TokenType::NewLine) {
+                self.cursor += 1;
+            } else if self.expect(TokenType::SetClose) {
+                break;
+            }
+        }
+        let node = Node {
+            node_type: NodeType::Body,
+            children: vec![self.stack.pop().unwrap()],
+            token: None,
+        };
+        node
+    }
+
+    fn stack_expect(&self, node_type: NodeType) -> bool {
+        if self.stack.len() == 0 {
+            return false;
+        }
+        self.stack[self.stack.len() - 1].node_type == node_type
+    }
+
+    fn stack_shift(&mut self) {
+        let token = self.tokens[self.cursor].clone();
+
+        self.cursor += 1;
+    }
+
+    fn stack_reduce(&mut self) -> Node {
+        self.stack.pop().unwrap()
     }
 
     fn parse_set(&mut self) -> Node {
@@ -142,6 +193,20 @@ impl Parser {
         } else {
             None
         }
+    }
+
+    fn parse_set_difference(&mut self) -> Node {
+        assert!(self.expect(TokenType::SetDifference));
+        assert!(self.expect_stack_top(NodeType::Set) || self.expect_stack_top(NodeType::DataPoint));
+        self.cursor += 1; // \
+        let lhs = self.stack.pop().unwrap(); // set or datapoint
+        let set = self.parse_set();
+        let node = Node {
+            node_type: NodeType::SetDifference,
+            children: vec![lhs, set],
+            token: None,
+        };
+        node
     }
 }
 
@@ -211,5 +276,29 @@ mod tests {
         let root = parser.parse_set();
         assert_eq!(root.node_type, NodeType::Set);
         assert_eq!(root.children.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_set_difference() {
+        let text = "L1 \\ {d1, d2, d3}".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_body();
+        let set_d = &root.children[0];
+        assert_eq!(set_d.node_type, NodeType::SetDifference);
+        assert_eq!(set_d.children.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_set_difference_2() {
+        let text = "{d2, d3} \\ {d1, d2, d3}".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_body();
+        let set_d = &root.children[0];
+        assert_eq!(set_d.node_type, NodeType::SetDifference);
+        assert_eq!(set_d.children.len(), 2);
     }
 }
