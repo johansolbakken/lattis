@@ -117,13 +117,13 @@ impl Parser {
 
     fn parse_definition_list(&mut self) -> Vec<Node> {
         let mut definitions = Vec::new();
-        while self.expect(TokenType::Definition) {
+        while self.cursor < self.tokens.len() {
             let definition = self.parse_definition();
-            match definition {
-                Some(node) => definitions.push(node),
-                None => break,
+            if definition.is_none() {
+                break;
             }
-            if self.expect(TokenType::Comma) {
+            definitions.push(definition.unwrap());
+            if self.cursor < self.tokens.len() && self.expect(TokenType::Comma) {
                 self.cursor += 1;
             }
         }
@@ -179,5 +179,15 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let root = parser.parse_definition().unwrap();
         assert_eq!(root.node_type, NodeType::Definition);
+    }
+
+    #[test]
+    fn test_parse_definition_list() {
+        let text = "d1, d2, d3".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_definition_list();
+        assert_eq!(root.len(), 3);
     }
 }
