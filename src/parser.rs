@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::io::Write;
 use std::vec;
 
@@ -359,7 +358,20 @@ mod tests {
         assert_eq!(root.node_type, NodeType::DataflowEquation);
         assert_eq!(root.children.len(), 2);
         // write to file
-        let mut file = File::create("log/test_parse_data_flow_equation.txt").unwrap();
+        let mut file = File::create("test_parse_data_flow_equation.test.txt").unwrap();
+        let s = root.to_string(0);
+        file.write_all(s.as_bytes()).unwrap();
+    }
+
+    #[test]
+    fn test_parse_data_flow_equation_list() {
+        let text = r"L1 = {}\nL2 = L1 U {d1}\nL3 = L2 U L28".to_string();
+        let mut lexer = Lexer::new(text);
+        let tokens = lexer.lex_all();
+        let mut parser = Parser::new(tokens);
+        let root = parser.parse_data_flow_equation_list();
+
+        let mut file = File::create("test_parse_data_flow_equation_list.test.txt").unwrap();
         let s = root.to_string(0);
         file.write_all(s.as_bytes()).unwrap();
     }
