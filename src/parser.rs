@@ -7,7 +7,6 @@ pub enum NodeType {
     Set,
     DataPoint,
     Definition,
-    DefinitionList,
     Union,
     SetDifference,
     DataflowEquation,
@@ -46,6 +45,9 @@ impl Parser {
     }
 
     fn expect(&self, token_type: TokenType) -> bool {
+        if self.cursor >= self.tokens.len() {
+            return false;
+        }
         self.tokens[self.cursor].token_type == token_type
     }
 
@@ -109,7 +111,7 @@ impl Parser {
     }
 
     fn parse_body(&mut self) -> Node {
-        while self.cursor < self.tokens.len() {
+        while self.cursor < self.tokens.len() && !self.expect(TokenType::NewLine) {
             if self.expect(TokenType::SetOpen) {
                 let set = self.parse_set();
                 self.stack.push(set);
@@ -121,12 +123,15 @@ impl Parser {
                 self.stack.push(data_point);
             } else if self.expect(TokenType::Comma) {
                 self.cursor += 1;
-            } else if self.expect(TokenType::NewLine) {
-                self.cursor += 1;
             } else if self.expect(TokenType::SetClose) {
                 break;
             }
         }
+
+        if self.expect(TokenType::NewLine) {
+            self.cursor += 1;
+        }
+
         let node = Node {
             node_type: NodeType::Body,
             children: vec![self.stack.pop().unwrap()],
@@ -140,16 +145,6 @@ impl Parser {
             return false;
         }
         self.stack[self.stack.len() - 1].node_type == node_type
-    }
-
-    fn stack_shift(&mut self) {
-        let token = self.tokens[self.cursor].clone();
-
-        self.cursor += 1;
-    }
-
-    fn stack_reduce(&mut self) -> Node {
-        self.stack.pop().unwrap()
     }
 
     fn parse_set(&mut self) -> Node {
@@ -183,7 +178,7 @@ impl Parser {
 
     fn parse_definition(&mut self) -> Option<Node> {
         if self.expect(TokenType::Definition) {
-            let mut node = Node {
+            let node = Node {
                 node_type: NodeType::Definition,
                 children: Vec::new(),
                 token: Some(self.tokens[self.cursor].clone()),
